@@ -1,0 +1,66 @@
+{
+  "manifest_version": "0.3",
+  "name": "marrow",
+  "display_name": "Marrow (Apple Health)",
+  "version": "0.2.1",
+  "description": "Ask questions of your own Apple Health data: 174 metrics, workouts and nutrition, read-only, from your iPhone or self-hosted mirror.",
+  "long_description": "Marrow is a free iOS app that puts your Apple Health data in one place and serves it over MCP. This extension connects Claude to it. Enter the URL and token shown in the app (Export tab, Agents) or by your self-hosted mirror, and Claude can answer questions like 'how did my sleep change since I started morning training?' from real data. Six read-only tools; nothing can write to your health record.",
+  "author": {
+    "name": "Skeleton Army",
+    "url": "https://skeletonarmy.tech"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DukeAidanHall/marrow-mcp.git"
+  },
+  "homepage": "https://skeletonarmy.tech",
+  "documentation": "https://skeletonarmy.tech/mcp",
+  "support": "https://github.com/DukeAidanHall/marrow-mcp/issues",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
+      "env": {
+        "MARROW_URL": "${user_config.url}",
+        "MARROW_TOKEN": "${user_config.token}"
+      }
+    }
+  },
+  "user_config": {
+    "url": {
+      "type": "string",
+      "title": "Marrow MCP URL",
+      "description": "From the app: Export tab, Agents (MCP). Looks like http://192.168.1.20:21212/mcp (phone) or http://pi.local:8800/mcp (self-hosted mirror).",
+      "required": true
+    },
+    "token": {
+      "type": "string",
+      "title": "Bearer token",
+      "description": "Shown next to the URL in the app, or printed by the mirror on first run.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ]
+  },
+  "keywords": [
+    "apple-health",
+    "healthkit",
+    "health",
+    "fitness",
+    "quantified-self",
+    "marrow"
+  ],
+  "license": "MIT",
+  "icon": "icon.png"
+}

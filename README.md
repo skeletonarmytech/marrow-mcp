@@ -10,6 +10,8 @@ the Model Context Protocol so agents can query it 24/7, phone in your pocket.
 
 Nothing here talks to a cloud. Data flows phone → your machine, full stop.
 
+![An agent querying Marrow over MCP: sleep and workout data answered from the phone](demo.gif)
+
 ## Run it
 
 ```sh
@@ -41,7 +43,15 @@ claude mcp add --transport http marrow \
   --header "Authorization: Bearer <mcp token>"
 ```
 
-**Claude Desktop, Cursor, or anything using an `mcp.json`**
+**Claude Desktop, one click**
+
+Download [`marrow.mcpb`](https://github.com/DukeAidanHall/marrow-mcp/releases/latest/download/marrow.mcpb),
+double-click it, and Claude Desktop installs the extension and asks for the
+URL and token. No terminal involved. (The bundle is a tiny zero-dependency
+bridge in `mcpb/`; it forwards Claude's stdio to your Marrow URL and nothing
+else.)
+
+**Claude Desktop (manual), Cursor, or anything using an `mcp.json`**
 
 ```json
 {
