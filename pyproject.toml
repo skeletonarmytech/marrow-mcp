@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "marrow-mcp"
-version = "0.2.1"
+version = "0.2.2"
 description = "Self-hosted mirror and MCP server for Marrow, giving AI agents read-only access to your own Apple Health data"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -28,7 +28,7 @@ qr = ["segno>=1.6"]
 [project.urls]
 Homepage = "https://skeletonarmy.tech/"
 Documentation = "https://skeletonarmy.tech/mcp"
-Source = "https://github.com/DukeAidanHall/marrow-mcp"
+Source = "https://github.com/skeletonarmytech/marrow-mcp"
 
 [project.scripts]
 marrow-server = "marrow_server:main"

@@ -45,7 +45,7 @@ claude mcp add --transport http marrow \
 
 **Claude Desktop, one click**
 
-Download [`marrow.mcpb`](https://github.com/DukeAidanHall/marrow-mcp/releases/latest/download/marrow.mcpb),
+Download [`marrow.mcpb`](https://github.com/skeletonarmytech/marrow-mcp/releases/latest/download/marrow.mcpb),
 double-click it, and Claude Desktop installs the extension and asks for the
 URL and token. No terminal involved. (The bundle is a tiny zero-dependency
 bridge in `mcpb/`; it forwards Claude's stdio to your Marrow URL and nothing
