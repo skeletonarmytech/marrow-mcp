@@ -112,6 +112,13 @@ Health. [Ask for an invite.](https://skeletonarmy.tech/#get)
 The iOS app is closed source; this server is not, because you should be able to
 read anything you are asked to run on your own hardware.
 
+## Registry
+
+Listed in the [official MCP registry](https://registry.modelcontextprotocol.io)
+as `tech.skeletonarmy/marrow`, verified by DNS on skeletonarmy.tech.
+
+mcp-name: tech.skeletonarmy/marrow
+
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
