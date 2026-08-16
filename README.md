@@ -129,6 +129,17 @@ as `tech.skeletonarmy/marrow`, verified by DNS on skeletonarmy.tech.
 
 mcp-name: tech.skeletonarmy/marrow
 
+## Help and policies
+
+- [Agent setup guide](https://skeletonarmy.tech/mcp), the full client-by-client
+  walkthrough
+- [Support and troubleshooting](https://skeletonarmy.tech/support), or email
+  <support@skeletonarmy.tech>
+- [Privacy policy](https://skeletonarmy.tech/privacy). Short version: your
+  health data stays on your device, this server runs on hardware you own, and
+  nothing here reports to us.
+- [Terms of use](https://skeletonarmy.tech/terms)
+
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
