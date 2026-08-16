@@ -1,0 +1,8 @@
+services:
+  marrow:
+    build: .
+    ports:
+      - "8800:8800"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

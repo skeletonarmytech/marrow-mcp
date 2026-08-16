@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "marrow-mcp"
+version = "0.2.0"
+description = "Self-hosted mirror and MCP server for Marrow, giving AI agents read-only access to your own Apple Health data"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Skeleton Army" }]
+keywords = ["mcp", "model-context-protocol", "apple-health", "healthkit", "quantified-self", "agents"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+# Standard library only. segno is optional and only draws the pairing QR in
+# the terminal; the pairing page renders one either way.
+dependencies = []
+
+[project.optional-dependencies]
+qr = ["segno>=1.6"]
+
+[project.urls]
+Homepage = "https://skeletonarmy.tech/"
+Documentation = "https://skeletonarmy.tech/mcp"
+Source = "https://github.com/DukeAidanHall/marrow-mcp"
+
+[project.scripts]
+marrow-server = "marrow_server:main"
+
+[tool.hatch.build.targets.wheel]
+include = ["marrow_server.py"]
