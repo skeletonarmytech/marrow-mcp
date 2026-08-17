@@ -103,6 +103,21 @@ CREATE TABLE IF NOT EXISTS workouts (
     end_date       TEXT,
     day            TEXT
 );
+CREATE TABLE IF NOT EXISTS strength_sets (
+    uuid         TEXT UNIQUE,
+    session_id   TEXT NOT NULL,
+    session_name TEXT,
+    exercise     TEXT NOT NULL,
+    idx          INTEGER,
+    weight       REAL,
+    unit         TEXT,
+    reps         INTEGER,
+    done_at      TEXT,
+    day          TEXT,
+    muscles      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_strength_session ON strength_sets (session_id);
+CREATE INDEX IF NOT EXISTS idx_strength_day ON strength_sets (day);
 CREATE TABLE IF NOT EXISTS ingest_log (
     ts TEXT, seq INTEGER, stream TEXT, added INTEGER, deleted INTEGER
 );
@@ -171,14 +186,57 @@ class Mirror:
             offset = 0
         added = payload.get("added") or []
         deleted = payload.get("deleted") or []
-        if not isinstance(added, list) or not isinstance(deleted, list) \
-                or not all(isinstance(x, dict) for x in added):
+        if stream != "strength_session" and (
+                not isinstance(added, list) or not isinstance(deleted, list)
+                or not all(isinstance(x, dict) for x in added)):
             raise ValueError("added/deleted must be lists (of objects)")
 
         # Raw staging first — everything downstream is rebuildable.
         stamp = datetime.now().strftime("%Y-%m-%d")
         with open(self.staging / f"{stamp}.jsonl", "a") as fh:
             fh.write(json.dumps(payload, separators=(",", ":")) + "\n")
+
+        # Strength sessions arrive whole and replace whole: the app's own
+        # save semantics are latest-wins per session, so an edited workout
+        # can never leave stale sets here.
+        if stream == "strength_session":
+            session = payload.get("session") or {}
+            sets = payload.get("sets") or []
+            sid = str(session.get("id") or "")
+            if not sid or not isinstance(sets, list):
+                raise ValueError("strength_session needs session.id and sets")
+            unit = str(payload.get("unit") or "")
+            name = str(session.get("name") or "Workout")
+            cur = self.conn.cursor()
+            cur.execute("DELETE FROM strength_sets WHERE session_id=?", (sid,))
+            n = 0
+            for s in sets:
+                if not isinstance(s, dict):
+                    continue
+                done = str(s.get("done_at") or "")
+                try:
+                    done_s, day = local_strings(done, offset)
+                except ValueError:
+                    continue
+                cur.execute(
+                    "INSERT INTO strength_sets(uuid,session_id,session_name,"
+                    "exercise,idx,weight,unit,reps,done_at,day,muscles) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?) "
+                    "ON CONFLICT(uuid) DO UPDATE SET weight=excluded.weight,"
+                    "reps=excluded.reps, done_at=excluded.done_at,"
+                    "day=excluded.day, muscles=excluded.muscles",
+                    (str(s.get("id") or f"{sid}:{s.get('idx')}"), sid, name,
+                     str(s.get("exercise") or ""), s.get("idx"),
+                     s.get("weight"), unit, s.get("reps"), done_s, day,
+                     json.dumps(s.get("muscles") or [],
+                                separators=(",", ":"))))
+                n += 1
+            cur.execute("INSERT INTO ingest_log VALUES(?,?,?,?,?)",
+                        (datetime.now().isoformat(timespec="seconds"),
+                         payload.get("seq"), stream, n, 0))
+            self.conn.commit()
+            return {"ok": True, "stream": stream, "added": n, "deleted": 0,
+                    "ignored": max(len(sets) - n, 0)}
 
         n_add = n_del = n_ignored = 0
         cur = self.conn.cursor()
@@ -288,10 +346,20 @@ class Mirror:
         return None
 
     def daily(self, apple_type, days):
-        agg = "SUM" if any(h in apple_type for h in SUM_HINTS) else "AVG"
         floor = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        if any(h in apple_type for h in SUM_HINTS):
+            # Phone and watch both record the same walk; a flat SUM
+            # double-counts (observed +35% on steps). Per-source day totals,
+            # richest source wins - the honest approximation of Apple's
+            # interval-level dedup, and the same rule the app's math applies.
+            return self.conn.execute(
+                "SELECT day, MAX(s) FROM ("
+                "  SELECT day, source_name, SUM(num) AS s FROM records"
+                "  WHERE type=? AND day>=? AND num IS NOT NULL"
+                "  GROUP BY day, source_name"
+                ") GROUP BY day ORDER BY day", (apple_type, floor)).fetchall()
         return self.conn.execute(
-            f"SELECT day, {agg}(num) FROM records "
+            "SELECT day, AVG(num) FROM records "
             "WHERE type=? AND day>=? AND num IS NOT NULL "
             "GROUP BY day ORDER BY day", (apple_type, floor)).fetchall()
 
@@ -308,6 +376,66 @@ class Mirror:
             "SELECT activity_type, start_date, end_date, duration, "
             "duration_unit, source_name FROM workouts WHERE day>=? "
             "ORDER BY start_date DESC", (floor,)).fetchall()
+
+    def strength(self, days):
+        """Sets + per-exercise progression + muscle-group volume, mirroring
+        what the app's own strength pages derive. Epley for est. 1RM, and
+        muscle attribution comes stored per set (the phone sends it; the
+        server has no exercise catalog of its own)."""
+        floor = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        rows = self.conn.execute(
+            "SELECT uuid, session_id, session_name, exercise, idx, weight, "
+            "unit, reps, done_at, day, muscles FROM strength_sets "
+            "WHERE day>=? ORDER BY done_at", (floor,)).fetchall()
+
+        def e1rm(w, r):
+            if not w or not r:
+                return 0.0
+            return w if r == 1 else w * (1 + r / 30)
+
+        sets, by_exercise, muscle = [], {}, {}
+        for (_, sid, sname, ex, idx, w, unit, reps, done, day, mus) in rows:
+            w = w or 0.0
+            reps = reps or 0
+            sets.append({"time": done, "session": sname, "exercise": ex,
+                         "set": (idx or 0) + 1, "weight": w, "unit": unit,
+                         "reps": reps, "est_1rm": round(e1rm(w, reps), 1)})
+            by_exercise.setdefault(ex, {}).setdefault(sid, []).append(
+                (day, w, reps))
+            try:
+                credits = json.loads(mus or "[]")
+            except ValueError:
+                credits = []
+            for c in credits:
+                g = c.get("group")
+                cr = float(c.get("credit") or 0)
+                if g:
+                    m = muscle.setdefault(g, {"volume": 0.0, "set_credits": 0.0})
+                    m["volume"] += w * reps * cr
+                    m["set_credits"] += cr
+
+        exercises = []
+        for ex in sorted(by_exercise):
+            sessions = []
+            for sid, ss in by_exercise[ex].items():
+                best = max(e1rm(w, r) for _, w, r in ss)
+                heaviest = max(ss, key=lambda t: t[1])
+                sessions.append({"date": min(d for d, _, _ in ss),
+                                 "sets": len(ss),
+                                 "top_weight": heaviest[1],
+                                 "top_reps": heaviest[2],
+                                 "est_1rm": round(best, 1),
+                                 "volume": round(sum(w * r for _, w, r in ss), 1)})
+            sessions.sort(key=lambda s: s["date"])
+            exercises.append({"exercise": ex,
+                              "best_est_1rm": max(s["est_1rm"] for s in sessions),
+                              "sessions": sessions})
+
+        return {"sets": sets, "exercises": exercises,
+                "muscle_groups": [
+                    {"group": g, "volume": round(v["volume"], 1),
+                     "set_credits": round(v["set_credits"], 1)}
+                    for g, v in sorted(muscle.items())]}
 
 
 TOOLS = [
@@ -339,6 +467,13 @@ TOOLS = [
      "description": "Workouts in the mirror (all sources).",
      "inputSchema": {"type": "object", "properties": {
          "days": {"type": "integer", "description": "Days back (default 30)"}}}},
+    {"name": "strength_log",
+     "description": "Weightlifting detail: every set (exercise, weight, "
+                    "reps) with estimated 1RM, per-exercise progression, "
+                    "and volume per muscle group.",
+     "inputSchema": {"type": "object", "properties": {
+         "days": {"type": "integer",
+                  "description": "Days back (default 90, max 400)"}}}},
 ]
 
 SUMMARY_KEYS = ["step_count", "active_energy_burned", "apple_exercise_time",
@@ -385,6 +520,8 @@ def call_tool(mirror, name, args):
         return [{"activity": a, "start": s, "end": e, "duration": d,
                  "unit": u, "source": src}
                 for a, s, e, d, u, src in mirror.workouts(clamp("days", 30, 400))]
+    if name == "strength_log":
+        return mirror.strength(clamp("days", 90, 400))
     raise ValueError(f"unknown tool: {name}")
 
 
