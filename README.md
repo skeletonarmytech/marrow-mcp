@@ -2,9 +2,9 @@
 
 Give your AI agents read-only access to your own Apple Health data.
 
-[Marrow](https://skeletonarmy.tech/) is a free iOS app that pulls 174 Apple
-Health metrics, your food diary, your workouts and your set-by-set
-weightlifting log into one place. This repo is
+[Marrow](https://skeletonarmy.tech/) is a free iOS app that tracks 178
+health data series - 172 Apple Health types plus its own meal diary and
+set-by-set weightlifting log. This repo is
 its **self-hosted companion server**: one Python file, standard library only,
 that keeps a SQLite mirror of your data on hardware you own and serves it over
 the Model Context Protocol so agents can query it 24/7, phone in your pocket.
@@ -86,6 +86,7 @@ All read-only. Nothing an agent can call writes to your health record.
 | `metric_daily` | Daily values for any metric, up to 400 days |
 | `metric_samples` | Raw records with timestamps and source devices |
 | `workouts` | Workouts, including set-by-set strength detail |
+| `nutrition_log` | The meal diary: every logged food with full nutrient detail, by day |
 | `strength_log` | Every lifting set with estimated 1RM, per-exercise progression, and volume per muscle group |
 
 Then ask your agent things like *"how did my sleep change once I started

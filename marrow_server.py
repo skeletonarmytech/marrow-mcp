@@ -118,6 +118,20 @@ CREATE TABLE IF NOT EXISTS strength_sets (
 );
 CREATE INDEX IF NOT EXISTS idx_strength_session ON strength_sets (session_id);
 CREATE INDEX IF NOT EXISTS idx_strength_day ON strength_sets (day);
+CREATE TABLE IF NOT EXISTS diary (
+    entry_id  TEXT UNIQUE,
+    day       TEXT NOT NULL,
+    meal      TEXT,
+    name      TEXT,
+    grams     REAL,
+    kcal      REAL,
+    protein   REAL,
+    carbs     REAL,
+    fat       REAL,
+    logged_at REAL,
+    extra     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_diary_day ON diary (day);
 CREATE TABLE IF NOT EXISTS ingest_log (
     ts TEXT, seq INTEGER, stream TEXT, added INTEGER, deleted INTEGER
 );
@@ -186,7 +200,7 @@ class Mirror:
             offset = 0
         added = payload.get("added") or []
         deleted = payload.get("deleted") or []
-        if stream != "strength_session" and (
+        if stream not in ("strength_session", "diary_day") and (
                 not isinstance(added, list) or not isinstance(deleted, list)
                 or not all(isinstance(x, dict) for x in added)):
             raise ValueError("added/deleted must be lists (of objects)")
@@ -195,6 +209,40 @@ class Mirror:
         stamp = datetime.now().strftime("%Y-%m-%d")
         with open(self.staging / f"{stamp}.jsonl", "a") as fh:
             fh.write(json.dumps(payload, separators=(",", ":")) + "\n")
+
+        # Diary days arrive whole and replace whole: any edit or delete on
+        # the phone re-sends the day's final state, so latest-wins keeps
+        # the mirror exact.
+        if stream == "diary_day":
+            day = str(payload.get("day") or "")
+            entries = payload.get("entries") or []
+            if not day or not isinstance(entries, list):
+                raise ValueError("diary_day needs day and entries")
+            cur = self.conn.cursor()
+            cur.execute("DELETE FROM diary WHERE day=?", (day,))
+            n = 0
+            for e in entries:
+                if not isinstance(e, dict):
+                    continue
+                cur.execute(
+                    "INSERT INTO diary(entry_id,day,meal,name,grams,kcal,"
+                    "protein,carbs,fat,logged_at,extra) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,?) "
+                    "ON CONFLICT(entry_id) DO UPDATE SET meal=excluded.meal,"
+                    "name=excluded.name, grams=excluded.grams,"
+                    "kcal=excluded.kcal, extra=excluded.extra",
+                    (str(e.get("id") or f"{day}:{n}"), day,
+                     str(e.get("meal") or ""), str(e.get("name") or ""),
+                     e.get("grams"), e.get("kcal"), e.get("protein"),
+                     e.get("carbs"), e.get("fat"), e.get("created"),
+                     json.dumps(e.get("extra") or {}, separators=(",", ":"))))
+                n += 1
+            cur.execute("INSERT INTO ingest_log VALUES(?,?,?,?,?)",
+                        (datetime.now().isoformat(timespec="seconds"),
+                         payload.get("seq"), stream, n, 0))
+            self.conn.commit()
+            return {"ok": True, "stream": stream, "added": n, "deleted": 0,
+                    "ignored": max(len(entries) - n, 0)}
 
         # Strength sessions arrive whole and replace whole: the app's own
         # save semantics are latest-wins per session, so an edited workout
@@ -377,6 +425,29 @@ class Mirror:
             "duration_unit, source_name FROM workouts WHERE day>=? "
             "ORDER BY start_date DESC", (floor,)).fetchall()
 
+    def nutrition(self, days):
+        """The meal diary: entries grouped by day, full nutrient detail."""
+        floor = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        rows = self.conn.execute(
+            "SELECT day, meal, name, grams, kcal, protein, carbs, fat, "
+            "logged_at, extra FROM diary WHERE day>=? "
+            "ORDER BY day, logged_at", (floor,)).fetchall()
+        out = {}
+        for (day, meal, name, grams, kcal, protein, carbs, fat,
+             logged, extra) in rows:
+            e = {"meal": meal, "name": name, "kcal": kcal,
+                 "protein_g": protein, "carbs_g": carbs, "fat_g": fat}
+            if grams is not None:
+                e["grams"] = grams
+            try:
+                nutrients = json.loads(extra or "{}")
+            except ValueError:
+                nutrients = {}
+            if nutrients:
+                e["nutrients"] = nutrients
+            out.setdefault(day, []).append(e)
+        return [{"day": d, "entries": es} for d, es in sorted(out.items())]
+
     def strength(self, days):
         """Sets + per-exercise progression + muscle-group volume, mirroring
         what the app's own strength pages derive. Epley for est. 1RM, and
@@ -467,6 +538,12 @@ TOOLS = [
      "description": "Workouts in the mirror (all sources).",
      "inputSchema": {"type": "object", "properties": {
          "days": {"type": "integer", "description": "Days back (default 30)"}}}},
+    {"name": "nutrition_log",
+     "description": "The meal diary: every logged food with full nutrient "
+                    "detail, grouped by day.",
+     "inputSchema": {"type": "object", "properties": {
+         "days": {"type": "integer",
+                  "description": "Days back (default 7, max 90)"}}}},
     {"name": "strength_log",
      "description": "Weightlifting detail: every set (exercise, weight, "
                     "reps) with estimated 1RM, per-exercise progression, "
@@ -520,6 +597,8 @@ def call_tool(mirror, name, args):
         return [{"activity": a, "start": s, "end": e, "duration": d,
                  "unit": u, "source": src}
                 for a, s, e, d, u, src in mirror.workouts(clamp("days", 30, 400))]
+    if name == "nutrition_log":
+        return mirror.nutrition(clamp("days", 7, 90))
     if name == "strength_log":
         return mirror.strength(clamp("days", 90, 400))
     raise ValueError(f"unknown tool: {name}")
