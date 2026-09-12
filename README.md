@@ -92,6 +92,24 @@ All read-only. Nothing an agent can call writes to your health record.
 Then ask your agent things like *"how did my sleep change once I started
 training in the mornings?"* and let it go and look.
 
+## Why not the built-in Claude or ChatGPT connector?
+
+Both Claude (Pro/Max, US) and ChatGPT now read Apple Health natively. Use them
+if that is all you need. They stop where this server starts:
+
+| | Claude / ChatGPT connector | Marrow + this server |
+|---|---|---|
+| Where it works | The iOS app only | Claude Code, Claude Desktop, Cursor, OpenClaw, Hermes, any MCP client, on any machine |
+| When it works | While you are in the chat on the phone | 24/7, phone in your pocket, from your own box |
+| What the model sees | Raw HealthKit numbers | Daily values reconciled against Apple's own totals, meal diary, set-by-set lifts |
+| Where the data lives | Their cloud, per conversation | SQLite on hardware you own |
+| Cost | Subscription | Free, MIT |
+
+**OpenClaw / Hermes / any agent on a home machine.** Point the agent's MCP
+config at the server URL with the bearer token, exactly as in the `mcp.json`
+block above. Reach it from outside the LAN with `tailscale serve --bg
+--https=8800 http://127.0.0.1:8800` and use the tailnet URL.
+
 ## The other three ways in
 
 This server is one of four, and you do not need it to give agents access:
