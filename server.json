@@ -2,17 +2,17 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "tech.skeletonarmy/marrow",
   "description": "Read-only MCP access to your own Apple Health data, mirrored from the Marrow iOS app.",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "repository": {
     "url": "https://github.com/skeletonarmytech/marrow-mcp",
     "source": "github"
   },
-  "websiteUrl": "https://skeletonarmy.tech/mcp",
+  "websiteUrl": "https://marrowhealthapp.com/mcp",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "marrow-mcp",
-      "version": "0.2.4",
+      "version": "0.2.5",
       "transport": {
         "type": "streamable-http",
         "url": "http://localhost:8800/mcp"

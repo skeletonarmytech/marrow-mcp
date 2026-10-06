@@ -2,19 +2,19 @@
   "manifest_version": "0.3",
   "name": "marrow",
   "display_name": "Marrow (Apple Health)",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Ask questions of your own Apple Health data: 178 data series, workouts and nutrition, read-only, from your iPhone or self-hosted mirror.",
   "long_description": "Marrow is a free iOS app that puts your Apple Health data in one place and serves it over MCP. This extension connects Claude to it. Enter the URL and token shown in the app (Export tab, Agents) or by your self-hosted mirror, and Claude can answer questions like 'how did my sleep change since I started morning training?' from real data. Seven read-only tools; nothing can write to your health record.",
   "author": {
     "name": "Skeleton Army",
-    "url": "https://skeletonarmy.tech"
+    "url": "https://marrowhealthapp.com"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/skeletonarmytech/marrow-mcp.git"
   },
-  "homepage": "https://skeletonarmy.tech",
-  "documentation": "https://skeletonarmy.tech/mcp",
+  "homepage": "https://marrowhealthapp.com",
+  "documentation": "https://marrowhealthapp.com/mcp",
   "support": "https://github.com/skeletonarmytech/marrow-mcp/issues",
   "server": {
     "type": "node",

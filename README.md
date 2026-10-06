@@ -2,7 +2,7 @@
 
 Give your AI agents read-only access to your own Apple Health data.
 
-[Marrow](https://skeletonarmy.tech/) is a free iOS app that tracks 178
+[Marrow](https://marrowhealthapp.com/) is a free iOS app that tracks 178
 health data series - 172 Apple Health types plus its own meal diary and
 set-by-set weightlifting log. This repo is
 its **self-hosted companion server**: one Python file, standard library only,
@@ -123,7 +123,7 @@ This server is one of four, and you do not need it to give agents access:
    webhook pushes to any URL (Home Assistant, n8n, your own endpoint).
 
 All four are in the free tier. Setup for all of them:
-<https://skeletonarmy.tech/mcp>.
+<https://marrowhealthapp.com/mcp>.
 
 ## Security
 
@@ -137,8 +137,8 @@ All four are in the free tier. Setup for all of them:
 
 ## Status
 
-Marrow is in TestFlight beta (0.2.0, build 85), iOS 17+, and requires Apple
-Health. [Ask for an invite.](https://skeletonarmy.tech/#get)
+Marrow is on the App Store (1.3.4), iOS 17+, and requires Apple Health.
+[Get it on the App Store.](https://apps.apple.com/app/id6800819435)
 
 The iOS app is closed source; this server is not, because you should be able to
 read anything you are asked to run on your own hardware.
@@ -152,14 +152,14 @@ mcp-name: tech.skeletonarmy/marrow
 
 ## Help and policies
 
-- [Agent setup guide](https://skeletonarmy.tech/mcp), the full client-by-client
+- [Agent setup guide](https://marrowhealthapp.com/mcp), the full client-by-client
   walkthrough
-- [Support and troubleshooting](https://skeletonarmy.tech/support), or email
+- [Support and troubleshooting](https://marrowhealthapp.com/support), or email
   <support@skeletonarmy.tech>
-- [Privacy policy](https://skeletonarmy.tech/privacy). Short version: your
+- [Privacy policy](https://marrowhealthapp.com/privacy). Short version: your
   health data stays on your device, this server runs on hardware you own, and
   nothing here reports to us.
-- [Terms of use](https://skeletonarmy.tech/terms)
+- [Terms of use](https://marrowhealthapp.com/terms)
 
 ## Licence
 
